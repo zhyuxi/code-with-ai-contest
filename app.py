@@ -130,11 +130,10 @@ else:
     r = pdk.Deck(
         layers=layers,
         initial_view_state=view_state,
-        tooltip=tooltip,
-        map_style="mapbox://styles/mapbox/light-v9"
+        tooltip=tooltip
     )
 
-    st.pydeck_chart(r)
+    st.pydeck_chart(r, use_container_width=True)
 
     st.markdown("**颜色说明：** 🟢 绿色 = 信号强 (RSRP > -90 dBm) | 🟡 黄色 = 信号中等 | 🔴 红色 = 信号弱 (RSRP < -110 dBm)")
     if map_mode == "3D 柱状图":
