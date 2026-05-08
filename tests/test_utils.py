@@ -6,10 +6,8 @@ import pandas as pd
 from utils import (
     load_signal_data,
     get_rsrp_color,
-    filter_by_band,
     filter_by_bands,
     filter_by_rsrp_range,
-    filter_by_terminal,
     filter_by_terminals,
     calculate_band_counts,
     calculate_terminal_counts
@@ -34,7 +32,7 @@ class TestLoadSignalData:
     def test_load_data_not_empty(self):
         """测试数据不为空"""
         df = load_signal_data("data/signal_samples.csv")
-        assert len(df) == 500  # 根据数据集大小
+        assert len(df) == 500
 
 
 class TestGetRsrpColor:
@@ -52,11 +50,10 @@ class TestGetRsrpColor:
 
     def test_yellow_gradient_for_medium_signal(self):
         """测试中等信号返回黄色渐变"""
-        # -100 dBm 应在 -90 和 -110 中间
         color = get_rsrp_color(-100)
-        assert color[0] > 0  # 有红色成分
-        assert color[1] > 0  # 有绿色成分
-        assert color[2] == 0  # 无蓝色
+        assert color[0] > 0
+        assert color[1] > 0
+        assert color[2] == 0
 
     def test_boundary_at_minus_90(self):
         """测试边界值 -90 dBm"""
@@ -67,30 +64,6 @@ class TestGetRsrpColor:
         """测试边界值 -110 dBm"""
         color = get_rsrp_color(-110)
         assert color == [200, 0, 0, 180]
-
-
-class TestFilterByBand:
-    """测试频段筛选功能"""
-
-    @pytest.fixture
-    def sample_data(self):
-        """创建测试数据"""
-        return pd.DataFrame({
-            "Band": ["n28", "n41", "n78", "n28", "n41"],
-            "CellID": [1, 2, 3, 4, 5],
-            "RSRP_dBm": [-90, -100, -110, -85, -95]
-        })
-
-    def test_filter_specific_band(self, sample_data):
-        """测试筛选特定频段"""
-        filtered = filter_by_band(sample_data, "n28")
-        assert len(filtered) == 2
-        assert all(filtered["Band"] == "n28")
-
-    def test_filter_all_bands(self, sample_data):
-        """测试筛选"全部"返回原数据"""
-        filtered = filter_by_band(sample_data, "全部")
-        assert len(filtered) == len(sample_data)
 
 
 class TestFilterByBands:
@@ -148,29 +121,6 @@ class TestFilterByRsrpRange:
         assert filtered["RSRP_dBm"].iloc[0] == -100
 
 
-class TestFilterByTerminal:
-    """测试终端类型筛选功能"""
-
-    @pytest.fixture
-    def sample_data(self):
-        """创建测试数据"""
-        return pd.DataFrame({
-            "TerminalType": ["Smartphone", "CPE", "IoT", "Smartphone"],
-            "CellID": [1, 2, 3, 4]
-        })
-
-    def test_filter_specific_terminal(self, sample_data):
-        """测试筛选特定终端类型"""
-        filtered = filter_by_terminal(sample_data, "Smartphone")
-        assert len(filtered) == 2
-        assert all(filtered["TerminalType"] == "Smartphone")
-
-    def test_filter_all_terminals(self, sample_data):
-        """测试筛选"全部"返回原数据"""
-        filtered = filter_by_terminal(sample_data, "全部")
-        assert len(filtered) == len(sample_data)
-
-
 class TestFilterByTerminals:
     """测试终端类型多选筛选功能"""
 
@@ -208,17 +158,15 @@ class TestCalculateBandCounts:
         """创建测试数据"""
         return pd.DataFrame({
             "Band": ["n28", "n28", "n41", "n78", "n41"],
-            "CellID": [1, 1, 2, 3, 4]  # n28: 1个小区, n41: 2个小区, n78: 1个小区
+            "CellID": [1, 1, 2, 3, 4]
         })
 
     def test_calculate_counts(self, sample_data):
         """测试频段统计"""
         counts = calculate_band_counts(sample_data)
         assert len(counts) == 3
-        # n28: CellID 1 (1个唯一值)
         n28_count = counts[counts["频段"] == "n28"]["基站数量"].iloc[0]
         assert n28_count == 1
-        # n41: CellID 2, 4 (2个唯一值)
         n41_count = counts[counts["频段"] == "n41"]["基站数量"].iloc[0]
         assert n41_count == 2
 
@@ -239,3 +187,76 @@ class TestCalculateTerminalCounts:
         assert len(counts) == 3
         smartphone_count = counts[counts["终端类型"] == "Smartphone"]["数量"].iloc[0]
         assert smartphone_count == 2
+
+
+class TestIntegrationFilterCombination:
+    """测试筛选组合功能（模拟 app.py 中的筛选逻辑）"""
+
+    @pytest.fixture
+    def sample_data(self):
+        """创建完整测试数据"""
+        return pd.DataFrame({
+            "Band": ["n28", "n41", "n78", "n28", "n41", "n78"],
+            "TerminalType": ["Smartphone", "CPE", "IoT", "Smartphone", "CPE", "IoT"],
+            "RSRP_dBm": [-80, -90, -100, -110, -95, -105],
+            "CellID": [1, 2, 3, 4, 5, 6],
+            "Latitude": [31.1, 31.2, 31.3, 31.4, 31.5, 31.6],
+            "Longitude": [121.1, 121.2, 121.3, 121.4, 121.5, 121.6]
+        })
+
+    def test_combined_filters_all_selected(self, sample_data):
+        """测试全部筛选条件组合"""
+        # 模拟 app.py 的筛选逻辑
+        filtered = sample_data.copy()
+
+        # 频段筛选
+        selected_bands = ["n28", "n41"]
+        if selected_bands:
+            filtered = filtered[filtered["Band"].isin(selected_bands)]
+        else:
+            filtered = pd.DataFrame(columns=sample_data.columns)
+
+        # RSRP 范围筛选
+        if len(filtered) > 0:
+            filtered = filter_by_rsrp_range(filtered, -100, -80)
+
+        # 终端类型筛选
+        selected_terminals = ["Smartphone", "CPE"]
+        if selected_terminals and len(filtered) > 0:
+            filtered = filtered[filtered["TerminalType"].isin(selected_terminals)]
+        elif not selected_terminals:
+            filtered = pd.DataFrame(columns=sample_data.columns)
+
+        assert len(filtered) == 3  # n28 Smartphone (-80), n41 CPE (-90), n41 CPE (-95)
+        assert set(filtered["Band"]) == {"n28", "n41"}
+
+    def test_combined_filters_no_band(self, sample_data):
+        """测试无频段选择时的筛选"""
+        filtered = sample_data.copy()
+        selected_bands = []
+        if selected_bands:
+            filtered = filtered[filtered["Band"].isin(selected_bands)]
+        else:
+            filtered = pd.DataFrame(columns=sample_data.columns)
+
+        assert len(filtered) == 0
+        assert list(filtered.columns) == list(sample_data.columns)  # 保留列结构
+
+    def test_combined_filters_no_terminal(self, sample_data):
+        """测试无终端类型选择时的筛选"""
+        filtered = sample_data.copy()
+        selected_bands = ["n28"]
+        if selected_bands:
+            filtered = filtered[filtered["Band"].isin(selected_bands)]
+
+        if len(filtered) > 0:
+            filtered = filter_by_rsrp_range(filtered, -120, -60)
+
+        selected_terminals = []
+        if selected_terminals and len(filtered) > 0:
+            filtered = filtered[filtered["TerminalType"].isin(selected_terminals)]
+        elif not selected_terminals:
+            filtered = pd.DataFrame(columns=sample_data.columns)
+
+        assert len(filtered) == 0
+        assert list(filtered.columns) == list(sample_data.columns)

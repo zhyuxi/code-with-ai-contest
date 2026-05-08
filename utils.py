@@ -45,22 +45,6 @@ def get_rsrp_color(rsrp: float) -> list:
         return [r, g, 0, 180]
 
 
-def filter_by_band(df: pd.DataFrame, band: str) -> pd.DataFrame:
-    """
-    按频段筛选数据（单选）
-
-    Args:
-        df: 原始数据
-        band: 频段名称，"全部"表示不筛选
-
-    Returns:
-        筛选后的DataFrame
-    """
-    if band == "全部":
-        return df.copy()
-    return df[df["Band"] == band].copy()
-
-
 def filter_by_bands(df: pd.DataFrame, bands: list) -> pd.DataFrame:
     """
     按频段筛选数据（多选）
@@ -90,22 +74,6 @@ def filter_by_rsrp_range(df: pd.DataFrame, min_rsrp: float, max_rsrp: float) -> 
         筛选后的DataFrame
     """
     return df[(df["RSRP_dBm"] >= min_rsrp) & (df["RSRP_dBm"] <= max_rsrp)].copy()
-
-
-def filter_by_terminal(df: pd.DataFrame, terminal_type: str) -> pd.DataFrame:
-    """
-    按终端类型筛选数据（单选）
-
-    Args:
-        df: 原始数据
-        terminal_type: 终端类型，"全部"表示不筛选
-
-    Returns:
-        筛选后的DataFrame
-    """
-    if terminal_type == "全部":
-        return df.copy()
-    return df[df["TerminalType"] == terminal_type].copy()
 
 
 def filter_by_terminals(df: pd.DataFrame, terminal_types: list) -> pd.DataFrame:
